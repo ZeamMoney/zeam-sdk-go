@@ -1,0 +1,48 @@
+name: api-sync
+
+on:
+  repository_dispatch:
+    types: [gateway-release]
+  workflow_dispatch:
+    inputs:
+      gateway_tag:
+        description: Gateway tag to sync (e.g. v0.3.0)
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+          cache: true
+      - name: derive gateway tag
+        id: tag
+        run: |
+          tag="${{ github.event.client_payload.gateway_tag || inputs.gateway_tag }}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+      - name: make sync-spec
+        run: make sync-spec GATEWAY_TAG=${{ steps.tag.outputs.tag }}
+      - name: make generate
+        run: make generate
+      - name: open PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: api-sync/${{ steps.tag.outputs.tag }}
+          title: "chore(api): sync OpenAPI spec from gateway ${{ steps.tag.outputs.tag }}"
+          body: |
+            Automated sync of the gateway OpenAPI contract.
+
+            - Gateway tag: `${{ steps.tag.outputs.tag }}`
+            - Regenerates `internal/wire/` via `make generate`.
+            - Reviewer checklist:
+              - [ ] `api/CHANGELOG.md` has an entry for every wire-shape change.
+              - [ ] `zeam.MinGatewayVersion` bumped if required.
+              - [ ] `test-contract` passes against staging.
+          labels: api-sync

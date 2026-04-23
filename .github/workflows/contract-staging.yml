@@ -1,0 +1,48 @@
+name: contract-staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_ref:
+        description: SDK ref to test (branch or tag)
+        required: true
+        default: main
+
+permissions:
+  id-token: write   # for GitHub OIDC → Azure AD federated identity
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    environment: staging   # protected environment; requires manual approval
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sdk_ref }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+          cache: true
+
+      - name: azure login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: fetch short-lived sandbox credentials from Key Vault
+        id: creds
+        run: |
+          ZEAM_CONTRACT_TOKEN=$(az keyvault secret show \
+            --vault-name "${{ secrets.KEY_VAULT_NAME }}" \
+            --name zeam-sdk-contract-token --query value -o tsv)
+          echo "::add-mask::$ZEAM_CONTRACT_TOKEN"
+          echo "ZEAM_CONTRACT_TOKEN=$ZEAM_CONTRACT_TOKEN" >> "$GITHUB_ENV"
+
+      - name: run contract suite
+        env:
+          ZEAM_API_URL: https://api.staging.zeam.app
+          ZEAM_CONTRACT_TESTS: "1"
+        run: make test-contract

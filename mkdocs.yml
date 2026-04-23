@@ -1,0 +1,45 @@
+site_name: Zeam Go SDK
+site_description: Official Go SDK for the Zeam Platform API Gateway
+site_url: https://sdk.zeam.app
+repo_url: https://github.com/ZeamMoney/zeam-sdk-go
+repo_name: ZeamMoney/zeam-sdk-go
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    primary: deep purple
+    accent: deep purple
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Authentication: auth.md
+  - Recipes: recipes.md
+  - Error handling: errors.md
+  - Token lifecycle: tokens.md
+  - Versioning policy: versioning.md
+  - Local development: local-dev.md
+  - Operational patterns: operational.md
+  - Security: security.md
+  - ADRs:
+      - adr/index.md
+      - SDK-0001 Repo & versioning: adr/sdk-0001-repo-and-versioning.md

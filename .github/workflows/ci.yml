@@ -1,0 +1,87 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+          cache: true
+      - name: gofumpt
+        run: |
+          go install mvdan.cc/gofumpt@latest
+          gofumpt -l . | tee /dev/stderr | (! read)
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+          cache: true
+      - run: go vet ./...
+      - run: go test -race -timeout=120s ./...
+
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+          cache: true
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
+
+  gosec:
+    name: gosec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: securego/gosec@master
+        with:
+          args: ./...
+
+  apidiff:
+    name: apidiff
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.2"
+          cache: true
+      - name: install apidiff
+        run: go install golang.org/x/exp/cmd/apidiff@latest
+      - name: check public surface compatibility
+        run: |
+          set -euo pipefail
+          base_ref="origin/${GITHUB_BASE_REF}"
+          tmp_old=$(mktemp -d)
+          git worktree add "$tmp_old" "$base_ref"
+          (cd "$tmp_old" && apidiff -w old.json ./... || true)
+          apidiff -incompatible "$tmp_old/old.json" ./... | tee apidiff.out
+          if grep -q . apidiff.out; then
+            echo "::error::Incompatible API changes detected. Add a !breaking label and an ADR reference if intentional."
+            exit 1
+          fi

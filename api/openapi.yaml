@@ -1,0 +1,18 @@
+openapi: 3.1.0
+info:
+  title: Zeam Platform API Gateway
+  description: |
+    Placeholder. The authoritative spec lives in `zeam-api-gateway.go` at
+    `docs/openapi.yaml` and is synced into this repo via `make sync-spec`.
+    Do not hand-edit this file — regenerate it from the gateway tag you
+    are targeting.
+  version: 0.0.0-unreleased
+servers:
+  - url: https://api.zeam.app
+    description: Production
+  - url: https://api.staging.zeam.app
+    description: Staging
+  - url: https://api.sandbox.zeam.app
+    description: Sandbox
+paths: {}
+components: {}

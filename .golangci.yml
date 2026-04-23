@@ -1,0 +1,40 @@
+run:
+  timeout: 5m
+  go: "1.26"
+
+linters:
+  enable:
+    - errcheck
+    - gofumpt
+    - goimports
+    - govet
+    - ineffassign
+    - misspell
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+    - gosec
+    - copyloopvar
+    - bodyclose
+    - noctx
+
+linters-settings:
+  gosec:
+    excludes:
+      - G404 # math/rand acceptable outside of crypto paths
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+        arguments:
+          - disableStutteringCheck
+
+issues:
+  exclude-dirs:
+    - internal/wire
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - bodyclose

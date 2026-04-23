@@ -1,0 +1,12 @@
+# Default owner — zeam-sdk maintainers
+*                                       @ZeamMoney/sdk-maintainers
+
+# Security-sensitive packages need security-team sign-off
+/auth/                                  @ZeamMoney/sdk-maintainers @ZeamMoney/security
+/transport/redaction.go                 @ZeamMoney/sdk-maintainers @ZeamMoney/security
+/webhook/                               @ZeamMoney/sdk-maintainers @ZeamMoney/security
+/stellar/                               @ZeamMoney/sdk-maintainers @ZeamMoney/security
+/internal/redact/                       @ZeamMoney/sdk-maintainers @ZeamMoney/security
+
+# Gateway team owns the synced OpenAPI spec and the contract changelog
+/api/                                   @BeamMoney/gateway-team @ZeamMoney/sdk-maintainers
