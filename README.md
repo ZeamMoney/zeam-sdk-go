@@ -101,4 +101,10 @@ from clone to first passing test in under ten minutes.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE).
+Copyright © 2026 Paytec Technologies B.V. All rights reserved.
+
+This repository is publicly visible for transparency and reference purposes only.
+
+No part of this codebase may be copied, modified, distributed, sublicensed, or used in commercial or production systems without prior written permission from the copyright holder.
+
+External contributions are not accepted at this stage.
