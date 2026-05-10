@@ -8,7 +8,7 @@ import (
 )
 
 func TestUnwrapSuccess(t *testing.T) {
-	body := []byte(`{"ok":true,"request_id":"rid-1","resource":"foo","verb":"get","data":{"hello":"world"}}`)
+	body := []byte(`{"data":{"hello":"world"},"status":200,"message":"OK"}`)
 	data, errEnv := Unwrap(http.StatusOK, body)
 	if errEnv != nil {
 		t.Fatalf("unexpected error envelope: %+v", errEnv)
@@ -34,7 +34,7 @@ func TestUnwrapBareJSONSuccess(t *testing.T) {
 }
 
 func TestUnwrapError(t *testing.T) {
-	body := []byte(`{"ok":false,"request_id":"rid-2","errors":[{"code":"invalid_token","message":"nope","details":{"k":"v"}}]}`)
+	body := []byte(`{"data":null,"status":401,"message":"invalid_token: nope"}`)
 	_, errEnv := Unwrap(http.StatusUnauthorized, body)
 	if errEnv == nil {
 		t.Fatal("expected error envelope, got nil")
@@ -42,14 +42,8 @@ func TestUnwrapError(t *testing.T) {
 	if errEnv.Code != "invalid_token" {
 		t.Errorf("code: got %q want invalid_token", errEnv.Code)
 	}
-	if errEnv.RequestID != "rid-2" {
-		t.Errorf("request id: got %q want rid-2", errEnv.RequestID)
-	}
 	if errEnv.Status != http.StatusUnauthorized {
 		t.Errorf("status: got %d want 401", errEnv.Status)
-	}
-	if errEnv.Details["k"] != "v" {
-		t.Errorf("details lost: %+v", errEnv.Details)
 	}
 }
 

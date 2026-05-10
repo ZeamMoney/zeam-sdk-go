@@ -2,6 +2,7 @@ package transport
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 // EnvelopeError is the transport-layer representation of a SPEC §18 error
@@ -15,23 +16,12 @@ type EnvelopeError struct {
 	Details   map[string]any
 }
 
-// successEnvelope mirrors SPEC §18 `{ok, request_id, resource, verb, data,
-// state?, substate?}`.
-type successEnvelope struct {
-	OK        bool            `json:"ok"`
-	RequestID string          `json:"request_id"`
-	Data      json.RawMessage `json:"data"`
-}
-
-// errorEnvelope mirrors the error-side SPEC §18 shape.
-type errorEnvelope struct {
-	OK        bool   `json:"ok"`
-	RequestID string `json:"request_id"`
-	Errors    []struct {
-		Code    string         `json:"code"`
-		Message string         `json:"message"`
-		Details map[string]any `json:"details"`
-	} `json:"errors"`
+// gatewayEnvelope mirrors the standard gateway response shape
+// `{data, status, message}`.
+type gatewayEnvelope struct {
+	Data    json.RawMessage `json:"data"`
+	Status  int             `json:"status"`
+	Message string          `json:"message"`
 }
 
 // Unwrap decodes a gateway response. On success it returns the inner
@@ -44,23 +34,24 @@ type errorEnvelope struct {
 // response bytes.
 func Unwrap(status int, body []byte) (json.RawMessage, *EnvelopeError) {
 	if status >= 200 && status < 300 {
-		var env successEnvelope
-		if err := json.Unmarshal(body, &env); err == nil && env.OK {
+		var env gatewayEnvelope
+		if err := json.Unmarshal(body, &env); err == nil && env.Status >= 200 && env.Data != nil {
 			return env.Data, nil
 		}
-		// Surface as bare JSON when the response didn't match the envelope
-		// (e.g. /auth-connect which is explicitly bare JSON).
+		// Bare-JSON passthrough for endpoints that don't use the
+		// standard envelope (e.g. /auth-connect returns bare SEP-10 JSON).
 		return body, nil
 	}
 
 	out := &EnvelopeError{Status: status}
-	var env errorEnvelope
+	var env gatewayEnvelope
 	if err := json.Unmarshal(body, &env); err == nil {
-		out.RequestID = env.RequestID
-		if len(env.Errors) > 0 {
-			out.Code = env.Errors[0].Code
-			out.Message = env.Errors[0].Message
-			out.Details = env.Errors[0].Details
+		out.Message = env.Message
+		// The gateway encodes error codes as the prefix before ":" in the
+		// message field (e.g. "missing_field: amount is required").
+		if code, _, ok := strings.Cut(env.Message, ":"); ok {
+			out.Code = strings.TrimSpace(code)
+			out.Message = strings.TrimSpace(env.Message)
 		}
 	}
 	return nil, out

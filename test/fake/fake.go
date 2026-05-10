@@ -43,30 +43,26 @@ func (s *Server) URL() string { return s.HTTP.URL }
 // Close shuts the server down.
 func (s *Server) Close() { s.HTTP.Close() }
 
-// WriteEnvelope writes a SPEC §18 success envelope wrapping data.
+// WriteEnvelope writes a standard gateway success envelope wrapping data.
 func WriteEnvelope(w http.ResponseWriter, requestID string, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Request-Id", requestID)
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"ok":         true,
-		"request_id": requestID,
-		"resource":   "test",
-		"verb":       "get",
-		"data":       data,
+		"data":    data,
+		"status":  200,
+		"message": "OK",
 	})
 }
 
-// WriteError writes a SPEC §18 error envelope.
+// WriteError writes a standard gateway error envelope.
 func WriteError(w http.ResponseWriter, status int, requestID, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Request-Id", requestID)
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"ok":         false,
-		"request_id": requestID,
-		"errors": []map[string]any{
-			{"code": code, "message": message},
-		},
+		"data":    nil,
+		"status":  status,
+		"message": code + ": " + message,
 	})
 }

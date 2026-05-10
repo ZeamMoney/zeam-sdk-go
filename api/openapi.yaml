@@ -8,11 +8,7 @@ info:
     are targeting.
   version: 0.0.0-unreleased
 servers:
-  - url: https://api.zeam.app
-    description: Production
-  - url: https://api.staging.zeam.app
-    description: Staging
-  - url: https://api.sandbox.zeam.app
-    description: Sandbox
+  - url: https://api-gateway.zeam.app
+    description: Zeam API Gateway
 paths: {}
 components: {}

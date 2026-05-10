@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Go 1.26.2 or later.
-- A Zeam platform account (sandbox is fine for first integration).
+- A Zeam platform account with issued credentials.
 
 ## Install
 
@@ -28,7 +28,7 @@ func main() {
     ctx := context.Background()
 
     client, err := zeam.New(
-        zeam.WithEnvironment(zeam.EnvironmentSandbox),
+        zeam.WithEnvironment(zeam.EnvironmentProduction),
     )
     if err != nil {
         log.Fatal(err)
@@ -42,21 +42,26 @@ func main() {
 }
 ```
 
-## Environments
+## Configuration
 
-| Environment | Base URL |
-|---|---|
-| `zeam.EnvironmentProduction` | `https://api.zeam.app` |
-| `zeam.EnvironmentStaging` | `https://api.staging.zeam.app` |
-| `zeam.EnvironmentSandbox` | `https://api.sandbox.zeam.app` |
-| `zeam.EnvironmentCustom(url)` | partner-supplied |
+| Option | Default | Description |
+|---|---|---|
+| `zeam.EnvironmentProduction` | `https://api-gateway.zeam.app` | Canonical API gateway (production and sandbox) |
+| `zeam.EnvironmentCustom(url)` | — | Local development (e.g. `http://localhost:8080`) |
+
+### Sandbox mode
+
+Zeam does not provide a separate sandbox URL. Sandbox mode runs against the
+same `https://api-gateway.zeam.app` endpoint. Your credentials and account
+configuration determine your access mode — you do not change URLs to switch
+between sandbox and production.
 
 ## Version compatibility
 
 The SDK declares `zeam.MinGatewayVersion`. On the first call, `Client.Ping`
 compares it against the gateway's `/healthz` `version` field and returns
-`zeam.ErrIncompatibleGateway` if the gateway is older. Opt out during
-sandbox development with `zeam.WithSkipVersionCheck()`.
+`zeam.ErrIncompatibleGateway` if the gateway is older. Opt out during early
+development with `zeam.WithSkipVersionCheck()`.
 
 ## Next steps
 

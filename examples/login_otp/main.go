@@ -16,7 +16,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	client, err := zeam.New(zeam.WithEnvironment(zeam.EnvironmentSandbox))
+	client, err := zeam.New(zeam.WithEnvironment(zeam.EnvironmentProduction))
 	if err != nil {
 		log.Fatal(err)
 	}

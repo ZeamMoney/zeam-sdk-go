@@ -3,7 +3,7 @@
 // Package contract contains live-gateway smoke tests. Invoked via
 // `make test-contract` with:
 //
-//	ZEAM_API_URL=https://api.staging.zeam.app
+//	ZEAM_API_URL=https://api-gateway.zeam.app
 //	ZEAM_CONTRACT_TESTS=1
 //	ZEAM_CONTRACT_TOKEN=<bearer>
 //

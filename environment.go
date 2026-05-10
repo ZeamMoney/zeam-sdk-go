@@ -18,14 +18,12 @@ func (e Environment) BaseURL() string { return e.baseURL }
 
 // Predeclared environments.
 var (
-	// EnvironmentProduction talks to https://api.zeam.app.
-	EnvironmentProduction = Environment{name: "production", baseURL: "https://api.zeam.app"}
-
-	// EnvironmentStaging talks to https://api.staging.zeam.app.
-	EnvironmentStaging = Environment{name: "staging", baseURL: "https://api.staging.zeam.app"}
-
-	// EnvironmentSandbox talks to https://api.sandbox.zeam.app.
-	EnvironmentSandbox = Environment{name: "sandbox", baseURL: "https://api.sandbox.zeam.app"}
+	// EnvironmentProduction talks to https://api-gateway.zeam.app.
+	//
+	// Sandbox mode does not use a separate URL. Access mode is
+	// determined by the credentials and account configuration that
+	// Zeam applies to your application, not by the URL you call.
+	EnvironmentProduction = Environment{name: "production", baseURL: "https://api-gateway.zeam.app"}
 )
 
 // EnvironmentCustom declares a custom environment. Typically used for local

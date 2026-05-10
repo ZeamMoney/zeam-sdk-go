@@ -40,7 +40,7 @@ transport stack end-to-end.
 ## Contract tests against staging
 
 ```bash
-ZEAM_API_URL=https://api.staging.zeam.app \
+ZEAM_API_URL=https://api-gateway.zeam.app \
 ZEAM_CONTRACT_TESTS=1 \
 ZEAM_CONTRACT_TOKEN=<bearer> \
 make test-contract

@@ -4,19 +4,25 @@
 [![License](https://img.shields.io/github/license/ZeamMoney/zeam-sdk-go)](./LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/ZeamMoney/zeam-sdk-go.svg)](https://pkg.go.dev/github.com/ZeamMoney/zeam-sdk-go)
 
-Official Go SDK for the **Zeam Platform API Gateway**. Secure-by-default, opinionated,
-and kept in lockstep with the gateway contract.
+Official Go SDK for the **Zeam API Gateway**. Typed clients, high-level recipes,
+and automatic auth lifecycle management — kept in lockstep with the gateway contract.
 
-The SDK gives partner and first-party integrators:
+## Features
 
-- Typed, 1:1 clients for every `/v1/*` gateway endpoint.
-- High-level **recipes** for common end-to-end flows (OTP login, SEP-10 login,
-  application registration, connect payment orchestration, credential rotation).
-- Automatic authentication lifecycle management (acquisition, single-flight
-  refresh, cross-track isolation, secure storage).
-- A narrow wrapper over the Stellar SDK so partners never import `stellar/go`
-  directly.
-- Inbound webhook HMAC verification with replay protection.
+- **Typed clients** — 1:1 wrappers for every `/v1/*` gateway endpoint
+- **Recipes** — one-call workflows for OTP login, SEP-10 auth, connect payments, credential rotation
+- **Two auth tracks** — Business (OTP/Firebase) and Connect (SEP-10), isolated at the type level
+- **Secure by default** — memory-only token store, TLS 1.3, payload redaction, constant-time webhook verification
+- **Observable** — OpenTelemetry hooks, structured events, `X-Request-Id` propagation
+- **Versioned parity** — runtime handshake against `/healthz` fails fast on gateway mismatch
+
+## Installation
+
+```bash
+go get github.com/ZeamMoney/zeam-sdk-go
+```
+
+## Quick Start
 
 ```go
 import (
@@ -41,63 +47,74 @@ func main() {
     sess, err := recipes.LoginOTP(ctx, client, recipes.LoginOTPInput{
         MobileNumber: "+27821234567",
         AskCode: func(ctx context.Context, hint recipes.OTPHint) (string, error) {
-            // partner-provided UX returns the code the end user typed
-            return "123456", nil
+            return "123456", nil // partner-provided UX
         },
     })
     _ = sess
 }
 ```
 
-## Getting Started
-
-```bash
-go get github.com/ZeamMoney/zeam-sdk-go
-```
-
 See [docs/getting-started.md](docs/getting-started.md) for a full walkthrough.
 
-## Features
+## Configuration
 
-- **Two authentication tracks** — Business (OTP/Firebase) and Connect (SEP-10)
-  are isolated at the type level; the SDK refuses to send a Business token to a
-  Connect endpoint or vice versa.
-- **Recipes** — one-call workflows for the most common orchestrations:
-  - `recipes.LoginOTP` — Business OTP login.
-  - `recipes.RegisterApplication` — one-time-secret capture at registration.
-  - `recipes.ConnectLogin` — full SEP-10 flow using a stored Stellar seed.
-  - `recipes.ConnectPayment` — 9-step off-ramp payment orchestration.
-  - `recipes.RotateCredential` — API key / webhook secret rotation.
-- **Secure by default** — memory-only token store, redaction before any
-  user-supplied logger sees payloads, TLS 1.3, constant-time webhook
-  signature verification, SSRF guards on `connect.Exec`.
-- **Observable** — OpenTelemetry tracing hooks, structured events, and
-  `X-Request-Id` propagation. No secrets ever reach spans or logs.
-- **Versioned parity** — the SDK declares `zeam.MinGatewayVersion` and performs
-  a runtime handshake against `/healthz` so a mismatched gateway fails fast
-  instead of corrupting a request.
+| Option | Default | Description |
+|---|---|---|
+| `zeam.EnvironmentProduction` | `https://api-gateway.zeam.app` | Canonical API gateway |
+| `zeam.EnvironmentCustom(url)` | — | Local dev (e.g. `http://localhost:8080`) |
+| `zeam.WithTimeout(d)` | 30s | Per-call deadline |
+| `zeam.WithVerboseErrors()` | off | Include upstream gateway messages in errors |
+| `zeam.WithSkipVersionCheck()` | off | Disable `/healthz` handshake |
+
+### Environment variables
+
+```bash
+ZEAM_API_BASE_URL=https://api-gateway.zeam.app
+ZEAM_CLIENT_ID=your_stellar_public_key
+ZEAM_CLIENT_SECRET=your_stellar_seed     # from your secret manager
+ZEAM_API_KEY=your_api_key                # required for Connect endpoints
+```
+
+### Sandbox mode
+
+Zeam does not provide a separate sandbox URL. All integrations — sandbox and
+production — call the same `https://api-gateway.zeam.app` endpoint. Your
+credentials and Zeam-side account configuration determine your access mode.
+You do not change URLs to switch between sandbox and production.
+
+## Error handling
+
+```go
+result, err := client.Raw().GET(ctx, "/v1/business/association/all", nil)
+if err != nil {
+    var e *zeam.Error
+    if errors.As(err, &e) {
+        fmt.Printf("code=%s kind=%s status=%d request_id=%s\n",
+            e.Code, e.Kind, e.Status, e.RequestID)
+    }
+    if errors.Is(err, zeam.KindTransient) {
+        // safe to retry
+    }
+}
+```
 
 ## Security
 
 This SDK is distributed publicly. Read [SECURITY.md](SECURITY.md) for the
-threat model, disclosure process, and the list of operational patterns
-integrators are expected to follow.
+threat model, disclosure process, and operational patterns integrators must follow.
 
-Never commit any of the one-time credentials returned by `POST /v1/application`
+Never commit one-time credentials returned by `POST /v1/application`
 (`stellar.secret`, `connectSecret`, `apiKey.secret`, `webhookSecret.secret`)
-to source control. Use a cloud secret manager or the SDK's optional keyring
-backend.
+to source control. Use a cloud secret manager or the SDK's optional keyring backend.
 
 ## Versioning
 
 SDK `vA.B.C` targets gateway `vA.B.≥0`. Breaking contract changes bump
-`A` (gateway) and `A` (SDK) together. See [docs/versioning.md](docs/versioning.md)
-for the full policy.
+`A` (gateway) and `A` (SDK) together. See [docs/versioning.md](docs/versioning.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The goal is to get a new contributor
-from clone to first passing test in under ten minutes.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Clone to first passing test in under ten minutes.
 
 ## License
 
