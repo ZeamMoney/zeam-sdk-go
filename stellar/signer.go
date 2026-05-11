@@ -1,6 +1,12 @@
 package stellar
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/stellar/go-stellar-sdk/keypair"
+	"github.com/stellar/go-stellar-sdk/txnbuild"
+)
 
 // ChallengeSigner signs a SEP-10 challenge XDR with a Keypair's seed.
 // Implementations delegate to the upstream Stellar SDK; the SDK wraps the
@@ -15,28 +21,51 @@ type ChallengeSigner interface {
 // NewSigner returns the default SEP-10 signer for the given network
 // passphrase. Pass [PublicNetworkPassphrase] for production use.
 func NewSigner(network string) ChallengeSigner {
-	return &placeholderSigner{network: network}
+	return &stellarSigner{network: network}
 }
 
-// placeholderSigner is the scaffold implementation. Once the upstream
-// stellar SDK is wired in, this type will be replaced by a real ed25519
-// signer that decodes the XDR, signs the hash with the seed, and
-// re-encodes the signed envelope.
-type placeholderSigner struct{ network string }
+type stellarSigner struct{ network string }
 
-// Sign implements [ChallengeSigner]. The scaffold variant returns an
-// explicit error so callers cannot accidentally ship unsigned challenges;
-// Phase 1 of the implementation plan wires the upstream keypair into this
-// method.
-func (s *placeholderSigner) Sign(xdr string, kp *Keypair) (string, error) {
-	if xdr == "" {
+// Sign implements [ChallengeSigner]. It parses the challenge XDR, signs
+// it with the keypair's seed, and returns the signed base64 XDR.
+func (s *stellarSigner) Sign(challengeXDR string, kp *Keypair) (string, error) {
+	if challengeXDR == "" {
 		return "", errors.New("stellar: empty challenge XDR")
 	}
 	if !kp.CanSign() {
 		return "", errors.New("stellar: keypair has no seed")
 	}
-	return "", errors.New("stellar: signer not yet wired to upstream SDK (Phase 1)")
+
+	// Parse seed into upstream keypair.
+	full, err := keypair.ParseFull(string(kp.seed))
+	if err != nil {
+		return "", fmt.Errorf("stellar: parse seed: %w", err)
+	}
+
+	// Parse the challenge XDR into a transaction.
+	genericTx, err := txnbuild.TransactionFromXDR(challengeXDR)
+	if err != nil {
+		return "", fmt.Errorf("stellar: parse challenge XDR: %w", err)
+	}
+
+	tx, ok := genericTx.Transaction()
+	if !ok {
+		return "", errors.New("stellar: challenge is not a regular transaction")
+	}
+
+	// Sign with our keypair on the configured network.
+	signed, err := tx.Sign(s.network, full)
+	if err != nil {
+		return "", fmt.Errorf("stellar: sign challenge: %w", err)
+	}
+
+	// Encode signed envelope back to base64 XDR.
+	result, err := signed.Base64()
+	if err != nil {
+		return "", fmt.Errorf("stellar: encode signed XDR: %w", err)
+	}
+	return result, nil
 }
 
 // Network returns the passphrase this signer targets.
-func (s *placeholderSigner) Network() string { return s.network }
+func (s *stellarSigner) Network() string { return s.network }

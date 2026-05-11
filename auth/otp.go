@@ -137,12 +137,14 @@ func (f *OTPFlow) post(ctx context.Context, path string, body any, out any) erro
 		return fmt.Errorf("auth: read response: %w", err)
 	}
 
+
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		var envelope struct {
-			OK   bool            `json:"ok"`
-			Data json.RawMessage `json:"data"`
+			Data    json.RawMessage `json:"data"`
+			Status  int             `json:"status"`
+			Message string          `json:"message"`
 		}
-		if err := json.Unmarshal(raw, &envelope); err == nil && envelope.OK && len(envelope.Data) > 0 {
+		if err := json.Unmarshal(raw, &envelope); err == nil && envelope.Status >= 200 && envelope.Status < 300 && len(envelope.Data) > 0 {
 			return json.Unmarshal(envelope.Data, out)
 		}
 		return json.Unmarshal(raw, out)

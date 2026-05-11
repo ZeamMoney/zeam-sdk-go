@@ -12,6 +12,7 @@ import (
 
 	"github.com/ZeamMoney/zeam-sdk-go"
 	"github.com/ZeamMoney/zeam-sdk-go/auth"
+	"github.com/ZeamMoney/zeam-sdk-go/client/application"
 	"github.com/ZeamMoney/zeam-sdk-go/recipes"
 )
 
@@ -29,9 +30,9 @@ func main() {
 
 	result, err := recipes.RegisterApplication(ctx, client, recipes.RegisterAppInput{
 		Session: sess,
-		Payload: map[string]any{
-			"name":        "demo-app",
-			"environment": "sandbox",
+		Payload: application.RegistrationInput{
+			ApplicationName: "demo-app",
+			AssociationID:   "your-association-id",
 		},
 		CaptureOneTimeSecrets: func(ctx context.Context, s recipes.OneTimeSecrets) error {
 			// In production: vault.Put(ctx, ...)

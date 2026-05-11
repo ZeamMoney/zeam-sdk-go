@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/ZeamMoney/zeam-sdk-go/auth"
@@ -75,7 +76,6 @@ func Call(
 	if connectSecret != "" {
 		req.Header.Set("x-zeam-auth", connectSecret)
 	}
-
 	resp, err := d.HTTPClient().Do(req)
 	if err != nil {
 		return fmt.Errorf("client: %s %s: %w", method, path, err)
@@ -86,6 +86,9 @@ func Call(
 	if err != nil {
 		return fmt.Errorf("client: read response: %w", err)
 	}
+
+	// DEBUG: tracer-bullet diagnostics.
+	fmt.Fprintf(os.Stderr, "[DEBUG] %s %s status=%d body=%s\n", method, path, resp.StatusCode, string(raw))
 
 	data, appErr := transport.Unwrap(resp.StatusCode, raw)
 	if appErr != nil {

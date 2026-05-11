@@ -25,7 +25,7 @@ func New(d client.Doer) *Client { return &Client{D: d} }
 // Association is the minimal association record returned by the Business API.
 type Association struct {
 	ID              string          `json:"id"`
-	AssociationName string          `json:"association_name"`
+	AssociationName string          `json:"associationName"`
 	Raw             json.RawMessage `json:"-"`
 }
 
@@ -33,6 +33,7 @@ type Association struct {
 type Wallet struct {
 	ID        string          `json:"id"`
 	PublicKey string          `json:"publicKey"`
+	VaultID   string          `json:"vaultId"`
 	Type      string          `json:"type"`
 	Balances  json.RawMessage `json:"balances"`
 	Raw       json.RawMessage `json:"-"`
@@ -101,6 +102,17 @@ func (c *Client) ListWalletsByAssociation(ctx context.Context, sess *auth.Sessio
 	var out []Wallet
 	err := client.Call(ctx, c.D, http.MethodGet, path, nil, sess, auth.TrackBusiness, "", nil, &out)
 	return out, err
+}
+
+// ListBeneficiaries calls GET /v1/business/beneficiaries/{associationId}.
+func (c *Client) ListBeneficiaries(ctx context.Context, sess *auth.Session, associationID string) ([]Beneficiary, error) {
+	path := fmt.Sprintf("/v1/business/beneficiaries/%s", associationID)
+	var out struct {
+		Beneficiaries []Beneficiary `json:"beneficiaries"`
+		Total         int           `json:"total"`
+	}
+	err := client.Call(ctx, c.D, http.MethodGet, path, nil, sess, auth.TrackBusiness, "", nil, &out)
+	return out.Beneficiaries, err
 }
 
 // GetBeneficiary calls GET /v1/business/beneficiaries/{associationId}/{id}.

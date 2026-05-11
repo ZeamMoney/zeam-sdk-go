@@ -265,7 +265,7 @@ func (f *ConnectPayment) RequiresStellarQuote() bool {
 	if f.ConnectQuote == nil {
 		return false
 	}
-	accepted, err := stellar.ParseAsset(f.ConnectQuote.AcceptedAsset)
+	accepted, err := stellar.ParseAsset(f.ConnectQuote.SendCurrency)
 	if err != nil {
 		return false
 	}
@@ -276,8 +276,8 @@ func (f *ConnectPayment) RequiresStellarQuote() bool {
 func (f *ConnectPayment) GetStellarQuote(ctx context.Context) (*business.StellarQuote, error) {
 	q, err := f.client.Business().StellarQuote(ctx, f.input.BusinessSession, business.StellarQuoteInput{
 		FromAsset: f.input.FundingAsset.String(),
-		ToAsset:   f.ConnectQuote.AcceptedAsset,
-		Amount:    f.ConnectQuote.SendAmount,
+		ToAsset:   f.ConnectQuote.SendCurrency,
+		Amount:    fmt.Sprintf("%.7f", f.ConnectQuote.SendAmount),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("step 7 stellar quote: %w", err)
@@ -291,12 +291,12 @@ func (f *ConnectPayment) ExecuteStellarTransaction(ctx context.Context) (string,
 	in := business.WalletTransactionInput{
 		ToPublicKey: f.connectClearingAccount(),
 		FromAsset:   f.input.FundingAsset.String(),
-		Amount:      f.ConnectQuote.SendAmount,
+		Amount:      fmt.Sprintf("%.7f", f.ConnectQuote.SendAmount),
 		Memo:        f.input.Memo,
 		MemoType:    f.input.MemoType,
 	}
 	if f.RequiresStellarQuote() {
-		in.ToAsset = f.ConnectQuote.AcceptedAsset
+		in.ToAsset = f.ConnectQuote.SendCurrency
 		in.SendMax = f.StellarQuote.SendMax
 	}
 	result, err := f.client.Business().ExecuteWalletTransaction(ctx, f.input.BusinessSession, f.input.WalletID, in)

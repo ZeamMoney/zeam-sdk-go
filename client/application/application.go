@@ -59,13 +59,20 @@ type RegistrationResponse struct {
 	Warnings      []string        `json:"warnings"`
 }
 
-// Register calls POST /v1/application. The payload shape is upstream-
-// owned; partners pass their registration JSON as a raw value. The
-// caller is responsible for persisting the one-time credentials BEFORE
-// discarding the returned struct — subsequent reads will not return
-// the `stellar.secret`, `apiKey.secret`, `webhookSecret.secret`, or
-// `connectSecret` fields.
-func (c *Client) Register(ctx context.Context, sess *auth.Session, payload any) (*RegistrationResponse, error) {
+// RegistrationInput is the request body for POST /v1/application.
+type RegistrationInput struct {
+	AssociationID     string `json:"associationId"`
+	ApplicationName   string `json:"applicationName"`
+	WebhookURL        string `json:"webhookUrl,omitempty"`
+	WebhookMethod     string `json:"webhookMethod,omitempty"` // "POST" or "PUT"
+	ExpiresAt         string `json:"expiresAt,omitempty"`     // RFC3339
+}
+
+// Register calls POST /v1/application. The caller is responsible for
+// persisting the one-time credentials BEFORE discarding the returned
+// struct — subsequent reads will not return the `stellar.secret`,
+// `apiKey.secret`, `webhookSecret.secret`, or `connectSecret` fields.
+func (c *Client) Register(ctx context.Context, sess *auth.Session, payload RegistrationInput) (*RegistrationResponse, error) {
 	var out RegistrationResponse
 	err := client.Call(ctx, c.D, http.MethodPost, "/v1/application", nil, sess, auth.TrackBusiness, "", payload, &out)
 	if err != nil {

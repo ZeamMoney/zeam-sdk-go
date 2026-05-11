@@ -33,7 +33,7 @@ type gatewayEnvelope struct {
 // status is the HTTP status code from the response line; body is the raw
 // response bytes.
 func Unwrap(status int, body []byte) (json.RawMessage, *EnvelopeError) {
-	if status >= 200 && status < 300 {
+	if (status >= 200 && status < 300) || status == 402 {
 		var env gatewayEnvelope
 		if err := json.Unmarshal(body, &env); err == nil && env.Status >= 200 && env.Data != nil {
 			return env.Data, nil

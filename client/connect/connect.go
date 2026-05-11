@@ -62,27 +62,25 @@ func (c *Client) QueryConnectors(ctx context.Context, sess *auth.Session, in Con
 	}
 	body := map[string]string{"countryISO": in.CountryISO, "method": in.Method}
 
-	// The gateway returns the GraphQL envelope verbatim with
-	// `{data: {connectors: {connectors: [...]}}}`.
+	// After transport.Unwrap strips the outer {data, status, message}
+	// envelope, we receive: {connectors: {connectors: [...]}}.
 	var raw struct {
-		Data struct {
-			Connectors struct {
-				Connectors []Connector `json:"connectors"`
-			} `json:"connectors"`
-		} `json:"data"`
+		Connectors struct {
+			Connectors []Connector `json:"connectors"`
+		} `json:"connectors"`
 	}
 	err := client.Call(ctx, c.D, http.MethodPost, "/v1/connect-query", nil, sess, auth.TrackConnect, c.ConnectSecret, body, &raw)
 	if err != nil {
 		return nil, err
 	}
-	return raw.Data.Connectors.Connectors, nil
+	return raw.Connectors.Connectors, nil
 }
 
 // QuoteInput is the body of POST /v1/connect-quote. The fields map to
 // the Connect owner's schema; partners pass destination-specific payloads
 // as raw JSON via [QuoteInput.Destination].
 type QuoteInput struct {
-	ConnectorID string          `json:"connector_id"`
+	ConnectorID string          `json:"connectorId"`
 	Amount      string          `json:"amount"`
 	Currency    string          `json:"currency"`
 	Destination json.RawMessage `json:"destination"`
@@ -91,14 +89,22 @@ type QuoteInput struct {
 // QuoteResponse is the gateway's quote response, fields matching
 // Connect's upstream contract.
 type QuoteResponse struct {
-	QuoteID          string          `json:"quoteId"`
-	AcceptedAsset    string          `json:"acceptedAsset"`
-	DestinationAsset string          `json:"destinationAsset"`
-	SendAmount       string          `json:"sendAmount"`
-	ReceiveAmount    string          `json:"receiveAmount"`
-	FXRate           string          `json:"fxRate"`
-	ExpiresAt        string          `json:"expiresAt"`
-	Raw              json.RawMessage `json:"-"`
+	QuoteID             string          `json:"quoteId"`
+	ConnectorID         string          `json:"connectorId"`
+	Direction           string          `json:"direction"`
+	SendAmount          float64         `json:"sendAmount"`
+	SendCurrency        string          `json:"sendCurrency"`
+	ReceiveAmount       float64         `json:"receiveAmount"`
+	ReceiveCurrency     string          `json:"receiveCurrency"`
+	Rate                float64         `json:"rate"`
+	Fee                 float64         `json:"fee"`
+	FeeCurrency         string          `json:"feeCurrency"`
+	Total               float64         `json:"total"`
+	ExpiresAt           string          `json:"expiresAt"`
+	CreatedAt           string          `json:"createdAt"`
+	TransactionType     string          `json:"transactionType"`
+	FundingInstructions json.RawMessage `json:"fundingInstructions"`
+	Raw                 json.RawMessage `json:"-"`
 }
 
 // GetQuote calls POST /v1/connect-quote.
@@ -113,10 +119,16 @@ func (c *Client) GetQuote(ctx context.Context, sess *auth.Session, in QuoteInput
 
 // ExecuteInput is the body of POST /v1/connect-execute.
 type ExecuteInput struct {
-	QuoteID     string          `json:"quoteId"`
-	TxHash      string          `json:"txHash"`
-	Destination json.RawMessage `json:"destination"`
-	Memo        string          `json:"memo,omitempty"`
+	QuoteID         string          `json:"quoteId"`
+	TransactionHash string          `json:"transactionHash"`
+	Reference       string          `json:"reference"`
+	RefundAccount   RefundAccount   `json:"refundAccount"`
+	Beneficiary     json.RawMessage `json:"beneficiary,omitempty"`
+}
+
+// RefundAccount identifies the Stellar account for refunds if the off-ramp fails.
+type RefundAccount struct {
+	Account string `json:"account"`
 }
 
 // ExecuteResponse is the result of the payout call.
@@ -136,7 +148,26 @@ func (c *Client) Execute(ctx context.Context, sess *auth.Session, in ExecuteInpu
 	return &out, nil
 }
 
-// ExecPath is the guarded path regex for [Client.Exec]. Matches
+// ConnectStatusResponse is the response from GET /v1/connect-status/{transaction_id}.
+type ConnectStatusResponse struct {
+	TransactionID string          `json:"transactionId"`
+	Status        string          `json:"status"`
+	TxHash        string          `json:"txHash"`
+	Raw           json.RawMessage `json:"-"`
+}
+
+// GetStatus calls GET /v1/connect-status/{transaction_id}.
+func (c *Client) GetStatus(ctx context.Context, sess *auth.Session, transactionID string) (*ConnectStatusResponse, error) {
+	path := fmt.Sprintf("/v1/connect-status/%s", transactionID)
+	var out ConnectStatusResponse
+	err := client.Call(ctx, c.D, http.MethodGet, path, nil, sess, auth.TrackConnect, c.ConnectSecret, nil, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ExecPath is the guarded path regex
 // `path/segments` / digits / underscores / hyphens only; rejects any
 // scheme, host, or `..` segment.
 var ExecPath = regexp.MustCompile(`^[a-zA-Z0-9/_\-]+$`)

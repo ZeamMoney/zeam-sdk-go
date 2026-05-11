@@ -28,9 +28,8 @@ type RegisterAppInput struct {
 	// Session is the Firebase-authenticated Business session holding
 	// permission to register an application.
 	Session *auth.Session
-	// Payload is the registration body the upstream service expects.
-	// Shape is upstream-owned; passed through the gateway unchanged.
-	Payload any
+	// Payload is the registration body for POST /v1/application.
+	Payload application.RegistrationInput
 	// CaptureOneTimeSecrets is invoked exactly once with the four
 	// credentials the gateway returns. If the callback returns an
 	// error, the SDK zeros the secrets and returns that error.
