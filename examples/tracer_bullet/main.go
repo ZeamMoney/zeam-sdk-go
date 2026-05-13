@@ -250,8 +250,7 @@ func main() {
 
 		quote, err := client.Connect().GetQuote(ctx, tok.connect, connect.QuoteInput{
 			ConnectorID: selectedConnector.ID,
-			Amount:      "10",
-			Currency:    selectedConnector.AcceptedAsset,
+			Amount:      10,
 		})
 		if err != nil {
 			fmt.Printf("  ✗ Get quote failed: %v\n", err)
@@ -265,19 +264,10 @@ func main() {
 			// ── Step 9: Init transaction + load payment ─────────────────
 			fmt.Println("\n══ Step 9: Init + Load transaction ══")
 
-			// Parse funding instructions from quote.
-			var funding struct {
-				Asset struct {
-					Code   string `json:"code"`
-					Issuer string `json:"issuer"`
-				} `json:"asset"`
-				DestinationAccount string `json:"destinationAccount"`
-				Memo               string `json:"memo"`
-				MemoType           string `json:"memoType"`
-			}
-			if err := json.Unmarshal(quote.FundingInstructions, &funding); err != nil {
-				fmt.Printf("  ✗ Parse funding instructions failed: %v\n", err)
+			if quote.FundingInstructions == nil {
+				fmt.Println("  ✗ No funding instructions in quote")
 			} else {
+				funding := quote.FundingInstructions
 				fmt.Printf("  Funding: send %.2f %s to %s memo=%s (%s)\n",
 					quote.Total, funding.Asset.Code, funding.DestinationAccount,
 					funding.Memo[:16]+"…", funding.MemoType)
@@ -350,10 +340,22 @@ func main() {
 								if statusResp.TxHash != "" {
 									fmt.Println("\n══ Step 11: Connect execute ══")
 
-									execResp, err := client.Connect().Execute(ctx, tok.connect, connect.ExecuteInput{
-										QuoteID: quote.QuoteID,
-										TxHash:  statusResp.TxHash,
-									})
+									execInput := connect.ExecuteInput{
+										Reference:       initResp.RequestID,
+										QuoteID:         quote.QuoteID,
+										RefundAccount:   connect.RefundAccount{Account: wallet.PublicKey},
+										TransactionHash: statusResp.TxHash,
+										Beneficiary: &connect.Beneficiary{
+											FirstName: "Jacques",
+											Lastname:  "Becker",
+											Msisdn:    "27783497894",
+											IdNumber:  "0207145127081",
+										},
+									}
+									execJSON, _ := json.MarshalIndent(execInput, "  ", "  ")
+									fmt.Printf("  [DEBUG] Execute payload:\n  %s\n", string(execJSON))
+
+									execResp, err := client.Connect().Execute(ctx, tok.connect, execInput)
 									if err != nil {
 										fmt.Printf("  ✗ Connect execute failed: %v\n", err)
 									} else {
