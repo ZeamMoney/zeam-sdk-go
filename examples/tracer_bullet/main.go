@@ -134,36 +134,23 @@ func main() {
 
 	appName := fmt.Sprintf("tracer-bullet-g-sdk-%d", time.Now().UnixMilli())
 
-	var capturedSecrets recipes.OneTimeSecrets
-	regResult, err := recipes.RegisterApplication(ctx, client, recipes.RegisterAppInput{
-		Session: bizSess,
-		Payload: application.RegistrationInput{
-			AssociationID:   selectedAssociation.ID,
-			ApplicationName: appName,
-		},
-		CaptureOneTimeSecrets: func(ctx context.Context, s recipes.OneTimeSecrets) error {
-			capturedSecrets = s
-			fmt.Printf("  ⚠ ONE-TIME SECRETS — capture these now!\n")
-			fmt.Printf("    stellar.publicKey = %s\n", s.StellarPublicKey)
-			fmt.Printf("    stellar.seed      = %s…\n", s.StellarSeed[:8])
-			fmt.Printf("    connectSecret     = %s…\n", s.ConnectSecret[:8])
-			fmt.Printf("    apiKey            = %s…\n", s.APIKey[:8])
-			fmt.Printf("    webhookSecret     = %s…\n", s.WebhookSecret[:8])
-			fmt.Printf("    webhookId         = %s\n", s.WebhookID)
-			return nil
-		},
+	regResult, err := client.Application().Register(ctx, bizSess, application.RegistrationInput{
+		AssociationID:   selectedAssociation.ID,
+		ApplicationName: appName,
 	})
 	if err != nil {
 		fmt.Printf("  ✗ Register failed: %v\n", err)
 		fmt.Println("  (continuing — see ISSUES.md)")
 	} else {
+		fmt.Printf("  ⚠ ONE-TIME SECRETS — capture these now!\n")
+		fmt.Printf("    stellar.publicKey = %s\n", regResult.Stellar.PublicKey)
+		fmt.Printf("    stellar.seed      = %s…\n", regResult.Stellar.Secret[:8])
+		fmt.Printf("    connectSecret     = %s…\n", regResult.ConnectSecret[:8])
+		fmt.Printf("    apiKey            = %s…\n", regResult.APIKey.Secret[:8])
+		fmt.Printf("    webhookSecret     = %s…\n", regResult.WebhookSecret.Secret[:8])
+		fmt.Printf("    webhookId         = %s\n", regResult.WebhookSecret.WebhookID)
 		fmt.Printf("  ✓ Registered %q — integratorId=%s stellarPub=%s\n",
-			appName, regResult.IntegratorID, regResult.StellarPublicKey)
-		if len(regResult.Warnings) > 0 {
-			for _, w := range regResult.Warnings {
-				fmt.Printf("  ⚠ warning: %s\n", w)
-			}
-		}
+			appName, regResult.IntegratorID, regResult.Stellar.PublicKey)
 	}
 
 	// ── Step 4: Authenticate for Connect (SEP-10) ──────────────────────
@@ -374,5 +361,4 @@ func main() {
 	}
 
 	fmt.Println("\n══ Tracer bullet complete ══")
-	_ = capturedSecrets
 }
