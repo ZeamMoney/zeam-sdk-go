@@ -3,18 +3,15 @@
 // The SDK exposes:
 //
 //   - [Client], the entry-point constructed via [New].
-//   - Typed 1:1 clients for gateway endpoints under the client/<domain> sub-packages.
-//   - High-level recipes for the most common workflows under recipes/.
-//   - OTP and SEP-10 authentication flows with a pluggable token store under auth/.
+//   - Typed clients for gateway endpoints: client/business, client/application,
+//     client/connect, client/payments.
+//   - OTP and SEP-10 authentication flows under auth/.
 //   - A narrow wrapper over the Stellar SDK under stellar/.
 //   - Inbound webhook HMAC verification under webhook/.
 //
 // Design principles:
 //
-//   - Secure by default: no secret reaches disk, logs, or telemetry.
-//   - Contract parity: SDK vA.B.C targets gateway vA.B.≥0. [MinGatewayVersion]
-//     encodes the lowest gateway the current SDK is known-good against, and a
-//     runtime handshake against /healthz refuses mismatched gateways.
+//   - Strongly typed: every request and response is a Go struct.
 //   - Explicit context: every public call takes ctx context.Context.
 //   - No globals: all configuration flows through Options passed to [New].
 //

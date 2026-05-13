@@ -322,10 +322,9 @@ func (c *Client) Execute(ctx context.Context, sess *auth.Session, in ExecuteInpu
 
 // ConnectStatusResponse is the response from GET /v1/connect-status/{transaction_id}.
 type ConnectStatusResponse struct {
-	TransactionID string          `json:"transactionId"`
-	Status        string          `json:"status"`
-	TxHash        string          `json:"txHash"`
-	Raw           json.RawMessage `json:"-"`
+	TransactionID string `json:"transactionId"`
+	Status        string `json:"status"`
+	TxHash        string `json:"txHash"`
 }
 
 // GetStatus calls GET /v1/connect-status/{transaction_id}.

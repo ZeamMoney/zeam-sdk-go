@@ -24,9 +24,8 @@ func New(d client.Doer) *Client { return &Client{D: d} }
 
 // Association is the minimal association record returned by the Business API.
 type Association struct {
-	ID              string          `json:"id"`
-	AssociationName string          `json:"associationName"`
-	Raw             json.RawMessage `json:"-"`
+	ID              string `json:"id"`
+	AssociationName string `json:"associationName"`
 }
 
 // Wallet is a Stellar wallet belonging to an association.
@@ -36,7 +35,6 @@ type Wallet struct {
 	VaultID   string          `json:"vaultId"`
 	Type      string          `json:"type"`
 	Balances  json.RawMessage `json:"balances"`
-	Raw       json.RawMessage `json:"-"`
 }
 
 // Beneficiary carries enough fields for the ConnectPayment recipe. Full
@@ -44,7 +42,6 @@ type Wallet struct {
 type Beneficiary struct {
 	ID                  string               `json:"id"`
 	PaymentDestinations []PaymentDestination `json:"payment_destinations"`
-	Raw                 json.RawMessage      `json:"-"`
 }
 
 // PaymentDestination is the chosen destination on a beneficiary.
@@ -68,7 +65,6 @@ type StellarQuote struct {
 	SendMax string          `json:"sendMax"`
 	Path    json.RawMessage `json:"path"`
 	FX      json.RawMessage `json:"fx"`
-	Raw     json.RawMessage `json:"-"`
 }
 
 // WalletTransactionInput is the body of POST /v1/business/wallet/{id}/transaction.
@@ -84,9 +80,8 @@ type WalletTransactionInput struct {
 
 // WalletTransactionResult carries the Horizon submission result.
 type WalletTransactionResult struct {
-	TxHash string          `json:"txHash"`
-	XDR    string          `json:"xdr"`
-	Raw    json.RawMessage `json:"-"`
+	TxHash string `json:"txHash"`
+	XDR    string `json:"xdr"`
 }
 
 // ListAssociations calls GET /v1/business/association/all.
