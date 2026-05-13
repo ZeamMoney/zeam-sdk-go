@@ -97,9 +97,9 @@ func (f *OTPFlow) Refresh(ctx context.Context, sess *Session) (*Session, error) 
 	if sess.Track() != TrackBusiness {
 		return nil, ErrWrongTrack
 	}
-	body := map[string]string{"refreshToken": sess.RefreshToken()}
+	req := RefreshRequest{RefreshToken: sess.RefreshToken()}
 	var resp verifyOTPResponse
-	if err := f.post(ctx, "/v1/public/auth/refresh", body, &resp); err != nil {
+	if err := f.post(ctx, "/v1/public/auth/refresh", req, &resp); err != nil {
 		return nil, err
 	}
 	expiresAt, err := expiryFromExpiresIn(resp.ExpiresIn)

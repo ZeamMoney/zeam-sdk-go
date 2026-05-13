@@ -76,35 +76,55 @@ func (c *Client) QueryConnectors(ctx context.Context, sess *auth.Session, in Con
 	return raw.Connectors.Connectors, nil
 }
 
-// QuoteInput is the body of POST /v1/connect-quote. The fields map to
-// the Connect owner's schema; partners pass destination-specific payloads
-// as raw JSON via [QuoteInput.Destination].
+// ── Quote (POST /v1/connect-quote) ────────────────────────────────────
+// Source of truth: connect.zeam.dotnet QuoteRequestDto / QuoteResponseDto
+
+// QuoteInput is the request body for POST /v1/connect-quote.
 type QuoteInput struct {
-	ConnectorID string          `json:"connectorId"`
-	Amount      string          `json:"amount"`
-	Currency    string          `json:"currency"`
-	Destination json.RawMessage `json:"destination"`
+	ConnectorID     string    `json:"connectorId"`
+	Amount          float64   `json:"amount"`
+	TransactionType string    `json:"transactionType,omitempty"` // e.g. "C2C"
+	QR              *QRCode   `json:"qr,omitempty"`
 }
 
-// QuoteResponse is the gateway's quote response, fields matching
-// Connect's upstream contract.
+// QRCode is an optional QR code payload for quote requests.
+type QRCode struct {
+	RawCode string `json:"rawCode"`
+}
+
+// QuoteResponse is the 402 response from POST /v1/connect-quote.
 type QuoteResponse struct {
-	QuoteID             string          `json:"quoteId"`
-	ConnectorID         string          `json:"connectorId"`
-	Direction           string          `json:"direction"`
-	SendAmount          float64         `json:"sendAmount"`
-	SendCurrency        string          `json:"sendCurrency"`
-	ReceiveAmount       float64         `json:"receiveAmount"`
-	ReceiveCurrency     string          `json:"receiveCurrency"`
-	Rate                float64         `json:"rate"`
-	Fee                 float64         `json:"fee"`
-	FeeCurrency         string          `json:"feeCurrency"`
-	Total               float64         `json:"total"`
-	ExpiresAt           string          `json:"expiresAt"`
-	CreatedAt           string          `json:"createdAt"`
-	TransactionType     string          `json:"transactionType"`
-	FundingInstructions json.RawMessage `json:"fundingInstructions"`
-	Raw                 json.RawMessage `json:"-"`
+	QuoteID             string               `json:"quoteId"`
+	ConnectorID         string               `json:"connectorId"`
+	Direction           string               `json:"direction"`
+	SendAmount          float64              `json:"sendAmount"`
+	SendCurrency        string               `json:"sendCurrency"`
+	ReceiveAmount       float64              `json:"receiveAmount"`
+	ReceiveCurrency     string               `json:"receiveCurrency"`
+	Rate                float64              `json:"rate"`
+	Fee                 float64              `json:"fee"`
+	FeeCurrency         string               `json:"feeCurrency"`
+	Total               float64              `json:"total"`
+	CreatedAt           string               `json:"createdAt"`
+	ExpiresAt           string               `json:"expiresAt"`
+	TransactionType     string               `json:"transactionType"`
+	FundingInstructions *QuoteFunding        `json:"fundingInstructions"`
+	Metadata            json.RawMessage      `json:"metadata,omitempty"`
+}
+
+// QuoteFunding contains the Stellar payment instructions from a quote.
+type QuoteFunding struct {
+	Network            string          `json:"network"`
+	DestinationAccount string          `json:"destinationAccount"`
+	Asset              QuoteFundingAsset `json:"asset"`
+	MemoType           string          `json:"memoType"`
+	Memo               string          `json:"memo"`
+}
+
+// QuoteFundingAsset identifies the Stellar asset for funding.
+type QuoteFundingAsset struct {
+	Code   string `json:"code"`
+	Issuer string `json:"issuer"`
 }
 
 // GetQuote calls POST /v1/connect-quote.
@@ -117,25 +137,177 @@ func (c *Client) GetQuote(ctx context.Context, sess *auth.Session, in QuoteInput
 	return &out, nil
 }
 
-// ExecuteInput is the body of POST /v1/connect-execute.
+// ── Execute / OffRamp (POST /v1/connect-execute) ────────────────────
+// Source of truth: connect.zeam.dotnet OffRampRequestDto / OffRampResponseDto
+
+// ExecuteInput is the request body for POST /v1/connect-execute.
+// Required fields: Reference, QuoteID, RefundAccount, TransactionHash.
+// The remaining fields are method-specific — populate the ones that match
+// the connector's payment method (e.g. Bank for BANK, Cash for CASH).
 type ExecuteInput struct {
-	QuoteID         string          `json:"quoteId"`
-	TransactionHash string          `json:"transactionHash"`
-	Reference       string          `json:"reference"`
-	RefundAccount   RefundAccount   `json:"refundAccount"`
-	Beneficiary     json.RawMessage `json:"beneficiary,omitempty"`
+	Reference           string               `json:"reference"`
+	QuoteID             string               `json:"quoteId"`
+	RefundAccount       RefundAccount        `json:"refundAccount"`
+	TransactionHash     string               `json:"transactionHash"`
+	Purpose             string               `json:"purpose,omitempty"`
+	Sender              *Sender              `json:"sender,omitempty"`
+	BusinessSender      *BusinessSender      `json:"businessSender,omitempty"`
+	Beneficiary         *Beneficiary         `json:"beneficiary,omitempty"`
+	BusinessBeneficiary *BusinessBeneficiary `json:"businessBeneficiary,omitempty"`
+	MobileMoney         *MobileMoney         `json:"mobileMoney,omitempty"`
+	Bank                *Bank                `json:"bank,omitempty"`
+	Voucher             *Voucher             `json:"voucher,omitempty"`
+	Cash                *Cash                `json:"cash,omitempty"`
+	QR                  *QRPayment           `json:"qr,omitempty"`
 }
 
-// RefundAccount identifies the Stellar account for refunds if the off-ramp fails.
+// RefundAccount identifies the Stellar account for refunds.
 type RefundAccount struct {
 	Account string `json:"account"`
 }
 
-// ExecuteResponse is the result of the payout call.
+// Sender is individual sender KYC data.
+type Sender struct {
+	FirstName                string `json:"firstName,omitempty"`
+	Middlename               string `json:"middlename,omitempty"`
+	Lastname                 string `json:"lastname,omitempty"`
+	NationalityCc            string `json:"nationalityCc,omitempty"`
+	Dob                      string `json:"dob,omitempty"`
+	CountryOfBirth           string `json:"countryOfBirth,omitempty"`
+	Gender                   string `json:"gender,omitempty"`
+	Address                  string `json:"address,omitempty"`
+	PostalCode               string `json:"postalCode,omitempty"`
+	City                     string `json:"city,omitempty"`
+	CountryIsoCode           string `json:"countryIsoCode,omitempty"`
+	Msisdn                   string `json:"msisdn"`
+	Email                    string `json:"email,omitempty"`
+	IdType                   string `json:"idType,omitempty"`
+	IdCountryIsoCode         string `json:"idCountryIsoCode,omitempty"`
+	IdNumber                 string `json:"idNumber,omitempty"`
+	IdExpiryDate             string `json:"idExpiryDate,omitempty"`
+	Occupation               string `json:"occupation,omitempty"`
+	ProvinceState            string `json:"provinceState,omitempty"`
+	BeneficiaryRelationship  string `json:"beneficiaryRelationship,omitempty"`
+	SourceOfFunds            string `json:"sourceOfFunds,omitempty"`
+}
+
+// BusinessSender is business sender KYC data.
+type BusinessSender struct {
+	RegisteredName                     string `json:"registered_name"`
+	TradingName                        string `json:"trading_name"`
+	Address                            string `json:"address"`
+	PostalCode                         string `json:"postal_code"`
+	City                               string `json:"city"`
+	CountryIsoCode                     string `json:"country_iso_code"`
+	Msisdn                             string `json:"msisdn"`
+	Email                              string `json:"email"`
+	DateOfIncorporation                string `json:"date_of_incorporation"`
+	RepresentativeLastname             string `json:"representative_lastname"`
+	RepresentativeFirstname            string `json:"representative_firstname"`
+	RepresentativeIdCountryIsoCode     string `json:"representative_id_country_iso_code"`
+	ProvinceState                      string `json:"province_state,omitempty"`
+	RegistrationNumber                 string `json:"registration_number,omitempty"`
+	Code                               string `json:"code,omitempty"`
+	TaxId                              string `json:"tax_id,omitempty"`
+}
+
+// Beneficiary is individual beneficiary KYC data.
+type Beneficiary struct {
+	FirstName                string `json:"firstName,omitempty"`
+	Middlename               string `json:"middlename,omitempty"`
+	Lastname                 string `json:"lastname,omitempty"`
+	NationalityCc            string `json:"nationalityCc,omitempty"`
+	Dob                      string `json:"dob,omitempty"`
+	CountryOfBirth           string `json:"countryOfBirth,omitempty"`
+	Gender                   string `json:"gender,omitempty"`
+	Address                  string `json:"address,omitempty"`
+	PostalCode               string `json:"postalCode,omitempty"`
+	City                     string `json:"city,omitempty"`
+	CountryIsoCode           string `json:"countryIsoCode,omitempty"`
+	Msisdn                   string `json:"msisdn"`
+	Email                    string `json:"email,omitempty"`
+	IdType                   string `json:"idType,omitempty"`
+	IdCountryIsoCode         string `json:"idCountryIsoCode,omitempty"`
+	IdNumber                 string `json:"idNumber,omitempty"`
+	IdExpiryDate             string `json:"idExpiryDate,omitempty"`
+	Occupation               string `json:"occupation,omitempty"`
+	ProvinceState            string `json:"provinceState,omitempty"`
+	BeneficiaryRelationship  string `json:"beneficiaryRelationship,omitempty"`
+	SourceOfFunds            string `json:"sourceOfFunds,omitempty"`
+}
+
+// BusinessBeneficiary is business beneficiary KYC data.
+type BusinessBeneficiary struct {
+	RegisteredName                     string `json:"registered_name"`
+	TradingName                        string `json:"trading_name"`
+	Address                            string `json:"address"`
+	PostalCode                         string `json:"postal_code"`
+	City                               string `json:"city"`
+	CountryIsoCode                     string `json:"country_iso_code"`
+	Msisdn                             string `json:"msisdn"`
+	Email                              string `json:"email"`
+	DateOfIncorporation                string `json:"date_of_incorporation"`
+	RepresentativeLastname             string `json:"representative_lastname"`
+	RepresentativeFirstname            string `json:"representative_firstname"`
+	RepresentativeIdCountryIsoCode     string `json:"representative_id_country_iso_code"`
+	ProvinceState                      string `json:"province_state,omitempty"`
+	RegistrationNumber                 string `json:"registration_number,omitempty"`
+	TaxId                              string `json:"tax_id,omitempty"`
+}
+
+// MobileMoney is the mobile money payment method details.
+type MobileMoney struct {
+	Msisdn        string `json:"msisdn,omitempty"`
+	AccountNumber string `json:"accountNumber,omitempty"`
+}
+
+// Bank is the bank transfer payment method details.
+type Bank struct {
+	AccountNumber    string `json:"accountNumber"`
+	BranchCode       string `json:"branchCode,omitempty"`
+	AccountName      string `json:"accountName,omitempty"`
+	AccountType      string `json:"accountType,omitempty"`
+	SwiftCode        string `json:"swiftCode,omitempty"`
+	Iban             string `json:"iban,omitempty"`
+	Clabe            string `json:"clabe,omitempty"`
+	Cbu              string `json:"cbu,omitempty"`
+	CbuAlias         string `json:"cbu_alias,omitempty"`
+	BikCode          string `json:"bik_code,omitempty"`
+	IfsCode          string `json:"ifs_code,omitempty"`
+	SortCode         string `json:"sort_code,omitempty"`
+	AbaRoutingNumber string `json:"aba_routing_number,omitempty"`
+	BsbNumber        string `json:"bsb_number,omitempty"`
+	RoutingCode      string `json:"routing_code,omitempty"`
+	EntityTtId       string `json:"entity_tt_id,omitempty"`
+	Email            string `json:"email,omitempty"`
+	CardNumber       string `json:"card_number,omitempty"`
+	QrCode           string `json:"qr_code,omitempty"`
+	BankId           *int   `json:"bankId,omitempty"`
+}
+
+// Voucher is the voucher payment method details.
+type Voucher struct {
+	Product string `json:"product"`
+}
+
+// Cash is the cash payment method details.
+type Cash struct {
+	Reference string `json:"reference"`
+}
+
+// QRPayment is the QR payment method details.
+type QRPayment struct {
+	Amount float64 `json:"amount"`
+	Tip    float64 `json:"tip"`
+}
+
+// ExecuteResponse is the response from POST /v1/connect-execute.
 type ExecuteResponse struct {
-	TransactionID string          `json:"transactionId"`
-	Status        string          `json:"status"`
-	Raw           json.RawMessage `json:"-"`
+	Status            string `json:"status"`
+	TransactionID     string `json:"transactionId"`
+	ExternalReference string `json:"externalReference"`
+	ConnectorID       string `json:"connectorId"`
+	CreatedAt         string `json:"createdAt"`
 }
 
 // Execute calls POST /v1/connect-execute.

@@ -9,7 +9,6 @@ import (
 	"github.com/ZeamMoney/zeam-sdk-go/client/connect"
 	"github.com/ZeamMoney/zeam-sdk-go/client/health"
 	"github.com/ZeamMoney/zeam-sdk-go/client/payments"
-	"github.com/ZeamMoney/zeam-sdk-go/client/reports"
 	"github.com/ZeamMoney/zeam-sdk-go/stellar"
 )
 
@@ -25,7 +24,6 @@ type lazy struct {
 	application *application.Client
 	connect     *connect.Client
 	payments    *payments.Client
-	reports     *reports.Client
 	health      *health.Client
 }
 
@@ -46,7 +44,6 @@ func (c *Client) lazyInit() {
 		c.lz.business = business.New(c)
 		c.lz.application = application.New(c)
 		c.lz.payments = payments.New(c)
-		c.lz.reports = reports.New(c)
 		// Connect requires a connector secret bound at call-time; the
 		// facade returns a client preconfigured with an empty secret,
 		// and WithConnectSecret wraps it. Callers can also construct
@@ -91,16 +88,10 @@ func (c *Client) Application() *application.Client {
 	return c.lz.application
 }
 
-// Payments returns the /v1/payments, /v1/quotes, /v1/orders client.
+// Payments returns the /v1/transaction/* client.
 func (c *Client) Payments() *payments.Client {
 	c.lazyInit()
 	return c.lz.payments
-}
-
-// Reports returns the /v1/reports/*, /v1/market-prices client.
-func (c *Client) Reports() *reports.Client {
-	c.lazyInit()
-	return c.lz.reports
 }
 
 // Connect returns the /v1/connect-* client configured without a

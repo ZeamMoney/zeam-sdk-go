@@ -33,3 +33,14 @@ func (t Track) String() string {
 // ErrWrongTrack is returned when a call attempts to use a session against
 // an endpoint belonging to a different track.
 var ErrWrongTrack = errors.New("auth: session track mismatch (business ↔ connect)")
+
+// RefreshRequest is the request body for POST /v1/public/auth/refresh
+// and POST /v1/public/auth-connect/refresh.
+type RefreshRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+// SEP10SubmitRequest is the request body for POST /v1/public/auth-connect.
+type SEP10SubmitRequest struct {
+	Transaction string `json:"transaction"`
+}

@@ -66,7 +66,7 @@ func (f *SEP10Flow) SubmitSigned(ctx context.Context, signedXDR, subject string)
 	u := *f.BaseURL
 	u.Path = strings.TrimRight(u.Path, "/") + "/v1/public/auth-connect"
 
-	body, err := json.Marshal(map[string]string{"transaction": signedXDR})
+	body, err := json.Marshal(SEP10SubmitRequest{Transaction: signedXDR})
 	if err != nil {
 		return nil, fmt.Errorf("auth: marshal submit body: %w", err)
 	}
@@ -113,7 +113,7 @@ func (f *SEP10Flow) Refresh(ctx context.Context, sess *Session) (*Session, error
 	u := *f.BaseURL
 	u.Path = strings.TrimRight(u.Path, "/") + "/v1/public/auth-connect/refresh"
 
-	body, err := json.Marshal(map[string]string{"refreshToken": sess.RefreshToken()})
+	body, err := json.Marshal(RefreshRequest{RefreshToken: sess.RefreshToken()})
 	if err != nil {
 		return nil, fmt.Errorf("auth: marshal refresh body: %w", err)
 	}
